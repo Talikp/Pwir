@@ -1,0 +1,73 @@
+V "GNAT Lib v5"
+M P W=b
+P ZX
+
+RN
+RV NO_CALENDAR
+RV NO_DELAY
+RV NO_FIXED_POINT
+RV NO_FLOATING_POINT
+RV NO_IO
+RV NO_IMPLICIT_LOOPS
+RV NO_IMPLEMENTATION_ATTRIBUTES
+RV SPARK_05
+
+U sort1%b		sort1.adb		311ef578 NE OO SU
+W ada%s			ada.ads			ada.ali
+W ada.calendar%s	a-calend.adb		a-calend.ali
+W ada.tags%s		a-tags.adb		a-tags.ali
+W ada.text_io%s		a-textio.adb		a-textio.ali
+W pak_sort%s		pak_sort.adb		pak_sort.ali
+W system.concat_3%s	s-conca3.adb		s-conca3.ali
+W system.img_lld%s	s-imglld.adb		s-imglld.ali
+
+D ada.ads		20070406091342 3ffc8e18 ada%s
+D a-calend.ads		20141120112812 d986d312 ada.calendar%s
+D a-except.ads		20140730140058 5250cb69 ada.exceptions%s
+D a-ioexce.ads		20140225151544 e4a01f64 ada.io_exceptions%s
+D a-stream.ads		20141120112812 119b8fb3 ada.streams%s
+D a-tags.ads		20140730140058 dc4d0634 ada.tags%s
+D a-textio.ads		20140717063745 386df5d4 ada.text_io%s
+D a-unccon.ads		20070406091342 f9eb8f06 ada.unchecked_conversion%s
+D interfac.ads		20141120112812 6033a23f interfaces%s
+D i-cstrea.ads		20140801100435 e53d8b8e interfaces.c_streams%s
+D pak_sort.ads		20161023204516 d30c52af pak_sort%s
+D sort1.adb		20161023204613 03f98111 sort1%b
+D system.ads		20141031112219 1d274481 system%s
+D s-conca3.ads		20140225151544 0b705ca5 system.concat_3%s
+D s-crtl.ads		20141120112812 0ebbdb71 system.crtl%s
+D s-exctab.ads		20140225151139 54135002 system.exception_table%s
+D s-ficobl.ads		20140718105747 078245e4 system.file_control_block%s
+D s-imglld.ads		20090409150019 f3220969 system.img_lld%s
+D s-parame.ads		20140801093848 7e2a0d7f system.parameters%s
+D s-soflin.ads		20140801100131 aa763b52 system.soft_links%s
+D s-stache.ads		20140225151139 a37c21ec system.stack_checking%s
+D s-stalib.ads		20150220094550 fa0a3617 system.standard_library%s
+D s-stoele.ads		20140225151139 2dc34a04 system.storage_elements%s
+D s-traent.ads		20140730135025 005bf670 system.traceback_entries%s
+D s-unstyp.ads		20140731130224 9d58a4c0 system.unsigned_types%s
+D s-wchcon.ads		20140718092328 1b7d22d2 system.wch_con%s
+X 1 ada.ads
+16K9*Ada 19e8 12|2r16 2r29 3r15 3r28
+X 2 a-calend.ads
+36K13*Calendar 382e17 12|2w33 3r32
+38I9*Time<200I9> 12|11r5
+52V13*Clock{38I9} 12|17s8 19s7
+97V14*"-"{duration} 12|19s12
+200I9 Time_Rep<long_long_integer>
+X 7 a-textio.ads
+49K13*Text_IO 471e16 12|2w20 3r19
+263U14*Put_Line 12|21s2
+X 11 pak_sort.ads
+3K10*Pak_Sort 20e13 12|2w6 3r5
+5A6*Wektor(float)<integer> 12|9r5
+8U11*Put_Wektor 12|16s2 20s2
+11U11*Losuj_Wektor 12|15s2
+14U11*Sortuj_BB 12|18s2
+X 12 sort1.adb
+5U11*Sort1 5b11 22l5 22t10
+8i1 Rozmiar{integer} 9r15
+9a1 W1{11|5A6} 15m15 15r15 16r13 18m12 18r12 20r13
+11i1 T1{2|38I9} 17m2 19r13
+12o1 D{duration} 19m2 21r31
+
