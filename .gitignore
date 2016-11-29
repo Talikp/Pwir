@@ -15,6 +15,6 @@ rel/example_project
 .concrete/DEV_MODE
 .rebar
 
-.zip
-.pdf
-.out
+*.zip
+*.pdf
+*.out
