@@ -1,0 +1,16 @@
+# Object file
+*.o
+
+# Ada Library Information
+*.ali
+
+.eunit
+deps
+*.o
+*.beam
+*.plt
+erl_crash.dump
+ebin/*.beam
+rel/example_project
+.concrete/DEV_MODE
+.rebar
