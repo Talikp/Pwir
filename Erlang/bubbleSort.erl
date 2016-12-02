@@ -16,3 +16,5 @@ swap([H1,H2|T]) ->
 	end;
 swap(L) -> L.
 
+
+
