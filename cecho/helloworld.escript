@@ -7,7 +7,9 @@
 %main(_) -> cecho_example:colors().
 %main(_) -> cecho_example:input().
 %main(_) -> cecho_example:cursmove().
-main(_) -> sonda_main:main().
+%main(_) -> sonda_main:main().
+main(_) -> sonda2:main().
+
 
 
 

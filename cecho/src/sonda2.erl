@@ -1,4 +1,4 @@
--module(sonda_main).
+-module(sonda2).
 
 -compile(export_all).
 
@@ -13,34 +13,51 @@ main() ->
 
     timer:sleep(200),        
     cecho:refresh(),
-    End = {30,40},
+    End = gen_End(),
     Trap = generate_plansza(?sizeY,?sizeX,500,End),
-    %[rysuj(Y,X,Trap,End) || {Y,X} <- sonda_ruchy()],
     rysuj(12,40,Trap,End),
     {Y,X} = {22,50},
 
     Dist = distance(End,{Y,X}),
-    loop(Y,X,Trap,End,#{{Y,X}=>{0,Dist,Dist}},[]),
+    Panel_PID = spawn(?MODULE,test_panel,[]),
+    Move = spawn(?MODULE,ctrl,[self()]),
+    Open = #{{Y,X}=>{0,Dist,Dist}},
+    Sonda = spawn(?MODULE,sonda,[Open,[],self()]),
+    loop(Y,X,Trap,End,Panel_PID),
 
-    timer:sleep(20000),        
+    Panel_PID!{self(),koniec},
+    timer:sleep(200),        
 
     application:stop(cecho).
 
-loop(Y,X,Trap,{EY,EX},Open,Close) ->
+loop(Y,X,Trap,{EY,EX},PID) ->
     TrapRange = traps_in_range(Y,X,Trap,1),
-    {OpenNew,CloseNew,Y1,X1} = next_point(Open,Close,TrapRange,{Y,X},{EY,EX}),
-    rysuj(Y1,X1,Trap,{EY,EX}),
-    {OY,OX} = offset(Y1,X1),
-    panel(),
-    timer:sleep(200),
+    receive 
+        {Od,trap} -> Od!{self(),next,TrapRange,{Y,X},{EY,EX}}
+    end,
+    
+    receive
+        {point,Y1,X1} -> ok
+    end,
 
-    %draw_map(CloseNew,6,OY,OX),
-    %cecho:refresh(),
-    %napis(maps:size(OpenNew),length(CloseNew)),
+    rysuj(Y1,X1,Trap,{EY,EX}),    
+    PID!{self(),panel,{Y1,X1},{EY,EX}},
+
+    receive
+        {koniec} -> ok;
+        {_,start} -> afterP(Y1,X1,Trap,{EY,EX},PID)
+    end.
+
+
+
+
+afterP(Y1,X1,Trap,{EY,EX},PID) ->
+    timer:sleep(200),
     if  
         ((Y1 == EY) and (X1 == EX)) -> ok;
-        true -> loop(Y1,X1,Trap,{EY,EX},OpenNew,CloseNew)
+        true -> loop(Y1,X1,Trap,{EY,EX},PID)
     end.
+
 
 
 init() ->
@@ -58,15 +75,6 @@ init() ->
     cecho:init_pair(8, ?ceCOLOR_BLACK, ?ceCOLOR_BLACK).
 
 
-rysuj(Y,X,Trap,End)->
-    {MaxY,MaxX} = cecho:getmaxyx(),
-    {CY,CX} = offset(Y,X),
-    draw_map(map_coord(MaxY,MaxX),8,0,0),
-    draw_map(Trap,1,CY,CX),
-    cecho:refresh(),
-    draw_End(End,CY,CX),
-    draw_sonda(Y,X,CY,CX),
-    timer:sleep(300). 
 
 napis(Y,X) ->
     cecho:attron(?ceCOLOR_PAIR(4)),
@@ -74,6 +82,16 @@ napis(Y,X) ->
     cecho:addstr(io_lib:format(" ~p ~p",[Y,X])),
     cecho:refresh(),
     timer:sleep(100).
+
+sonda(Open,Close,PID)->
+    PID!{self(),trap},
+    receive 
+        {koniec} -> ok;
+        {Od,next,Trap,Key,End} -> {OpenNew,CloseNew,Y,X} = next_point(Open,Close,Trap,Key,End),
+            Od!{point,Y,X},
+            sonda(OpenNew,CloseNew,PID)
+    end.
+
 
 next_point(Open,Close,Trap,Key,End) ->
     Close1 = [Key|Close],
@@ -124,6 +142,8 @@ update(Open,Key,{CG,CH,CF},End,[Head|T]) ->
 
     end.
 
+
+% Sprawdzenie czy wartość jest bliżej 
 check_value(Key,{G,H,F},Map) ->
     Check = compare_value({G,H,F},maps:get(Key,Map)),
     if 
@@ -132,19 +152,11 @@ check_value(Key,{G,H,F},Map) ->
     end.
 
 
-
 distance({Y1,X1},{Y2,X2}) ->
     Yd = abs(Y1-Y2),
     Xd = abs(X1-X2),
     Diff = max(Yd,Xd) - abs(Yd-Xd),
     10*(Yd+Xd)-(6*Diff).
-
-
-mini(A,B) ->
-    if 
-        A-B>0 -> A-B;
-        true -> B-A
-    end.    
 
 
 traps_in_range(Y,X,Trap,Range) -> 
@@ -168,9 +180,6 @@ not_traps({CY,CX},Trap,Close) ->
     ].
 
 
-sonda_ruchy()->
-    [ {12,X} || X <- lists:seq(36,46)].
-
 offset(Y,X) ->
     {MaxY,MaxX} = cecho:getmaxyx(),
     Y2 = MaxY div 2,
@@ -188,22 +197,14 @@ offset(Y,X) ->
         true -> {Y-Y2,X-X2}
     end.
 
-draw_sonda(Y,X,OffsetY,OffsetX) ->
-    cecho:attron(?ceCOLOR_PAIR(2)),
-    cecho:move(Y-OffsetY,X-OffsetX),
-    cecho:addch($ ),
-    cecho:refresh().
-    %timer:sleep(200).
+% -------------------- Generowanie end i traps---------------
 
-draw_End({Y,X},OffsetY,OffsetX) ->
-    cecho:attron(?ceCOLOR_PAIR(3)),
-    {MaxY,MaxX} = cecho:getmaxyx(),
-    if     ((Y-OffsetY>=0) and (Y-OffsetY<MaxY) and (X-OffsetX>=0) and (X-OffsetX<MaxX)) -> 
-                cecho:move(Y-OffsetY,X-OffsetX),
-                cecho:addch($ ),
-                cecho:refresh();
-            true -> ok
-    end.
+gen_End() ->
+    {A, B, C} = erlang:timestamp(),
+    random:seed(A, B, C),
+    Y = random:uniform(?sizeY)-1,
+	X = random:uniform(?sizeX)-1,
+    {Y,X}.
 
 
 generate_plansza(MaxY,MaxX,N,End) -> 
@@ -222,7 +223,33 @@ generate_plansza(MaxY,MaxX,N,L,End) ->
 map_coord(MaxY,MaxX)->
 	[ {A,B} || 	A <- lists:seq(0,MaxY-1), B <- lists:seq(0,MaxX-1)].
 
+%------------------------------DRAW---------------------------------
 
+rysuj(Y,X,Trap,End)->
+    {MaxY,MaxX} = cecho:getmaxyx(),
+    {CY,CX} = offset(Y,X),
+    draw_map(map_coord(MaxY,MaxX),8,0,0),
+    draw_map(Trap,1,CY,CX),
+    cecho:refresh(),
+    draw_End(End,CY,CX),
+    draw_sonda(Y,X,CY,CX).
+
+draw_sonda(Y,X,OffsetY,OffsetX) ->
+    cecho:attron(?ceCOLOR_PAIR(2)),
+    cecho:move(Y-OffsetY,X-OffsetX),
+    cecho:addch($ ),
+    cecho:refresh().
+    %timer:sleep(200).
+
+draw_End({Y,X},OffsetY,OffsetX) ->
+    cecho:attron(?ceCOLOR_PAIR(3)),
+    {MaxY,MaxX} = cecho:getmaxyx(),
+    if     ((Y-OffsetY>=0) and (Y-OffsetY<MaxY) and (X-OffsetX>=0) and (X-OffsetX<MaxX)) -> 
+                cecho:move(Y-OffsetY,X-OffsetX),
+                cecho:addch($ ),
+                cecho:refresh();
+            true -> ok
+    end.
 
 draw_map(List,Color,OffsetY,OffsetX) ->
     {MaxY,MaxX} = cecho:getmaxyx(),
@@ -235,31 +262,39 @@ draw(Y,X) ->
     cecho:move(Y,X),
     cecho:addch($ ).
 
-% --------------INPUT-----------------------------------------------------------------------------------
-
+% --------------Panel-----------------------------------------------------------------------------------
 
 test_panel()->
     receive
-        {panel} -> panel(),
-            test_panel;
-        {koniec} -> ok
+        {Od,panel,Key,End} -> panel(Key,End),
+            Od!{self(),start}, 
+            test_panel();
+        {_,koniec} -> ok
     end.
 
-panel() ->
-    cecho:attron(?ceCOLOR_PAIR(7)),
-    cecho:mvaddstr(0,0,"----------"),
-    cecho:mvaddstr(1,0,"|        |"),
-    cecho:mvaddstr(2,0,"----------"),
-    cecho:refresh().
 
+panel({Y,X},{EY,EX}) ->
+    cecho:attron(?ceCOLOR_PAIR(7)),
+    cecho:mvaddstr(0,0,"---------------"),
+    cecho:mvaddstr(1,0,"|             |"),
+    cecho:mvaddstr(2,0,"|             |"),
+    cecho:mvaddstr(3,0,"---------------"),
+
+    cecho:move(1,1),
+    cecho:addstr(io_lib:format(" Y: ~p  X: ~p",[Y,X])),
+    cecho:move(2,1),
+    cecho:addstr(io_lib:format("EY: ~p EX: ~p",[EY,EX])),
+    cecho:refresh(),
+    timer:sleep(300).
+
+% --------------INPUT-----------------------------------------------------------------------------------
 
 
 ctrl(Mover) ->
     C = cecho:getch(),
     case C of
 	$q -> 
-	    Mover!{koniec},
-	    erlang:halt();
+	    Mover!{koniec};
     $p ->
         Mover!{pauza},
         ctrl(Mover);
