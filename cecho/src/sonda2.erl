@@ -6,6 +6,7 @@
 
 -define(sizeX, 100).
 -define(sizeY, 100).
+-define(trap, 500).
 
 main() ->
     application:start(cecho),
@@ -13,52 +14,76 @@ main() ->
 
     timer:sleep(200),        
     cecho:refresh(),
-    End = gen_End(),
-    Trap = generate_plansza(?sizeY,?sizeX,500,End),
-    rysuj(12,40,Trap,End),
-    {Y,X} = {22,50},
+    {Start,End,Open,Trap} = init_map(),
 
-    Dist = distance(End,{Y,X}),
-    Panel_PID = spawn(?MODULE,test_panel,[]),
-    Move = spawn(?MODULE,ctrl,[self()]),
-    Open = #{{Y,X}=>{0,Dist,Dist}},
-    Sonda = spawn(?MODULE,sonda,[Open,[],self()]),
-    loop(Y,X,Trap,End,Panel_PID),
+    
+    Panel_PID = spawn_link(?MODULE,panel_proces,[]),
+    Move = spawn_link(?MODULE,ctrl,[self()]),
+    MapPID = spawn_link(?MODULE,mapa,[Trap]),
+    DrawingPID = spawn_link(?MODULE,drawing,[MapPID]),
+    Sonda_PID = spawn_link(?MODULE,sonda,[Open,[],Start,End,self(),MapPID]),
+    loop(Panel_PID,Sonda_PID,DrawingPID),
 
     Panel_PID!{self(),koniec},
     timer:sleep(200),        
 
     application:stop(cecho).
 
-loop(Y,X,Trap,{EY,EX},PID) ->
-    TrapRange = traps_in_range(Y,X,Trap,1),
-    receive 
-        {Od,trap} -> Od!{self(),next,TrapRange,{Y,X},{EY,EX}}
-    end,
-    
+loop(PPID,SPID,DPID) ->
+    SPID!{self(),next},
     receive
-        {point,Y1,X1} -> ok
+        {point,NewPoint,End} -> DPID!{self(),draw,NewPoint,End}
     end,
 
-    rysuj(Y1,X1,Trap,{EY,EX}),    
-    PID!{self(),panel,{Y1,X1},{EY,EX}},
+    receive
+        {drawed} -> PPID!{self(),panel,NewPoint,End}
+    end,
+    
 
     receive
         {koniec} -> ok;
-        {_,start} -> afterP(Y1,X1,Trap,{EY,EX},PID)
+        {restart} -> restartEnd(SPID),
+                loop(PPID,SPID,DPID);
+        {_,start} -> sprawdzanieCelu(NewPoint,End,PPID,SPID,DPID)
     end.
 
+restartEnd(SPID) ->
+    SPID!{self(),restartEnd},
+    receive
+        {restarted} ->ok
+    end.
 
+restartSIM(SPID) ->
+    SPID!{self(),restartSIM},
+    receive
+        {restarted} -> ok
+    end.
 
-
-afterP(Y1,X1,Trap,{EY,EX},PID) ->
+sprawdzanieCelu(Key,End,PPID,SPID,DPID) ->
     timer:sleep(200),
     if  
-        ((Y1 == EY) and (X1 == EX)) -> ok;
-        true -> loop(Y1,X1,Trap,{EY,EX},PID)
+        (Key == End) -> atDestination(PPID,SPID,DPID);
+        true -> loop(PPID,SPID,DPID)
+    end.
+
+atDestination(PPID,SPID,DPID) -> 
+    receive
+        {koniec} -> ok;
+        {restart} -> restartSIM(SPID),
+            loop(PPID,SPID,DPID)
     end.
 
 
+init_map() ->
+    End = gen_End(),
+    Trap = generate_plansza(?sizeY,?sizeX,?trap,End),
+    Start = gen_Point([End|Trap]),
+    Open = init_open(Start,End),
+    {Start,End,Open,Trap}.
+
+init_open(Start,End) ->
+    Dist = distance(End,Start),
+    #{Start=>{0,Dist,Dist}}.
 
 init() ->
     cecho:cbreak(),
@@ -83,15 +108,32 @@ napis(Y,X) ->
     cecho:refresh(),
     timer:sleep(100).
 
-sonda(Open,Close,PID)->
-    PID!{self(),trap},
+
+sonda(Open,Close,Key,End,PID,MapPID)->
     receive 
         {koniec} -> ok;
-        {Od,next,Trap,Key,End} -> {OpenNew,CloseNew,Y,X} = next_point(Open,Close,Trap,Key,End),
-            Od!{point,Y,X},
-            sonda(OpenNew,CloseNew,PID)
+        {PID,restartEnd} -> NewEnd = setNewEnd(MapPID,Key),
+                PID!{restarted},
+                sonda(init_open(Key,NewEnd),[],Key,NewEnd,PID,MapPID);
+        {PID,restartSIM} -> {RStart,REnd,ROpen,RTrap} = init_map(),
+                MapPID!{restart,RTrap},
+                PID!{restarted},
+                sonda(ROpen,[],RStart,REnd,PID,MapPID);
+        {PID,next} -> Traps = get_trapsInRange(MapPID,Key), 
+            {OpenNew,CloseNew,Y,X} = next_point(Open,Close,Traps,Key,End),
+            PID!{point,{Y,X},End},
+            sonda(OpenNew,CloseNew,{Y,X},End,PID,MapPID)
     end.
 
+setNewEnd(MPID,Key) ->
+    Traps = get_traps(MPID),
+    gen_Point([Key|Traps]).
+
+get_trapsInRange(MPID,Key) ->
+    MPID!{self(),trap,Key},
+    receive
+        {_,trap,Traps} -> Traps
+    end.
 
 next_point(Open,Close,Trap,Key,End) ->
     Close1 = [Key|Close],
@@ -112,8 +154,6 @@ accumulator({Y,X},{G,H,F},{Y1,X1,G1,H1,F1}) ->
         Check  -> {Y,X,G,H,F};
         true -> {Y1,X1,G1,H1,F1}
     end.
-
-
 
 
 compare_value({_,H1,F1},{_,H2,F2}) ->
@@ -143,6 +183,7 @@ update(Open,Key,{CG,CH,CF},End,[Head|T]) ->
     end.
 
 
+
 % Sprawdzenie czy wartość jest bliżej 
 check_value(Key,{G,H,F},Map) ->
     Check = compare_value({G,H,F},maps:get(Key,Map)),
@@ -151,7 +192,7 @@ check_value(Key,{G,H,F},Map) ->
         true -> maps:get(Key,Map)
     end.
 
-
+% obliczanie dystansu
 distance({Y1,X1},{Y2,X2}) ->
     Yd = abs(Y1-Y2),
     Xd = abs(X1-X2),
@@ -159,14 +200,7 @@ distance({Y1,X1},{Y2,X2}) ->
     10*(Yd+Xd)-(6*Diff).
 
 
-traps_in_range(Y,X,Trap,Range) -> 
-    List = [{Y1,X1} || Y1 <- lists:seq(Y-Range,Y+Range),
-     X1 <- lists:seq(X-Range,X+Range)],
-
-    [ {A,B} || {A,B} <- Trap, {Y2,X2} <-List,
-        A == Y2 , B == X2 
-    ].
-
+% filtrowanie listy w celu usunięcia przeszkód z niej
 not_traps({CY,CX},Trap,Close) ->
     Range = 1,
     List = [{Y1,X1} || Y1 <- lists:seq(CY-Range,CY+Range),
@@ -179,6 +213,31 @@ not_traps({CY,CX},Trap,Close) ->
         lists:member({Y2,X2},Close) == false
     ].
 
+
+%--------------------MAPA------------------------------
+
+mapa(Traps) ->
+    receive
+        {Od,trap,{Y,X}} ->
+            TrapRange = traps_in_range(Y,X,Traps,1),
+            Od!{self(),trap,TrapRange},
+            mapa(Traps);
+        {Ster,traps} -> Ster!{Traps},
+            mapa(Traps);
+        {restart,NewTrap} -> mapa(newTrap);
+        {koniec} -> ok
+    end.
+
+% przeszkody w zasięgu
+traps_in_range(Y,X,Trap,Range) -> 
+    List = [{Y1,X1} || Y1 <- lists:seq(Y-Range,Y+Range),
+     X1 <- lists:seq(X-Range,X+Range)],
+
+    [ {A,B} || {A,B} <- Trap, {Y2,X2} <-List,
+        A == Y2 , B == X2 
+    ].
+
+%-----------------------------------------------------
 
 offset(Y,X) ->
     {MaxY,MaxX} = cecho:getmaxyx(),
@@ -206,6 +265,14 @@ gen_End() ->
 	X = random:uniform(?sizeX)-1,
     {Y,X}.
 
+gen_Point(Traps) ->
+    {Y,X} = gen_End(),
+    Check = lists:member({Y,X},Traps),
+    if
+        Check == true -> gen_Point(Traps);
+        true -> {Y,X}
+    end.
+
 
 generate_plansza(MaxY,MaxX,N,End) -> 
     {A, B, C} = erlang:timestamp(),
@@ -225,7 +292,22 @@ map_coord(MaxY,MaxX)->
 
 %------------------------------DRAW---------------------------------
 
-rysuj(Y,X,Trap,End)->
+drawing(MPID) ->
+    receive
+        {Od,draw,Key,End} -> Traps = get_traps(MPID),
+             rysuj(Key,Traps,End),
+             Od!{drawed},
+            drawing(MPID)
+    end.
+
+get_traps(MPID) ->
+    MPID!{self(),traps},
+    receive
+        {Traps} -> Traps
+    end.
+
+
+rysuj({Y,X},Trap,End)->
     {MaxY,MaxX} = cecho:getmaxyx(),
     {CY,CX} = offset(Y,X),
     draw_map(map_coord(MaxY,MaxX),8,0,0),
@@ -264,11 +346,11 @@ draw(Y,X) ->
 
 % --------------Panel-----------------------------------------------------------------------------------
 
-test_panel()->
+panel_proces()->
     receive
         {Od,panel,Key,End} -> panel(Key,End),
             Od!{self(),start}, 
-            test_panel();
+            panel_proces();
         {_,koniec} -> ok
     end.
 
@@ -299,7 +381,10 @@ ctrl(Mover) ->
         Mover!{pauza},
         ctrl(Mover);
     $s ->
-        Mover!{start},
+        Mover!{self(),start},
+        ctrl(Mover);
+    $r ->
+        Mover!{restart},
         ctrl(Mover);
 	_ ->
 	    ctrl(Mover)

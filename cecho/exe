@@ -2,4 +2,4 @@
 
 ./rebar clean
 ./rebar compile 
-./helloworld.escript
+./run.escript
