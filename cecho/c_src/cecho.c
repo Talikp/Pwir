@@ -95,7 +95,8 @@ void do_wborder(state *st);
 void do_box(state *st);
 void do_keypad(state *st);
 void do_touchwin(state *st);
-
+void do_doupdate(state *st);
+void do_wnoutrefresh(state *st);
 // =============================================================================
 // Erlang Callbacks
 // =============================================================================
@@ -170,6 +171,8 @@ static ErlDrvSSizeT control(ErlDrvData drvstate, unsigned int command,
   case BOX: do_box(st); break;
   case KEYPAD: do_keypad(st); break;
   case TOUCHWIN: do_touchwin(st); break;
+  case DOUPDATE: do_doupdate(st); break;
+  case WNOUTREFRESH: do_wnoutrefresh(st); break;
   default: break;
   }
 
@@ -196,6 +199,16 @@ void do_initscr(state *st) {
   } else {
     encode_ok_reply(st, 0);
   }
+}
+
+void do_doupdate(state *st) {
+  encode_ok_reply(st, doupdate());
+}
+
+void do_wnoutrefresh(state *st) {
+  long slot;
+  ei_decode_long(st->args, &(st->index), &slot);
+  encode_ok_reply(st, wnoutrefresh(st->win[slot]));
 }
 
 void do_refresh(state *st) {
@@ -509,6 +522,8 @@ void do_touchwin(state *st) {
     boolean(st, TRUE);
   }
 }
+
+
 
 // =============================================================================
 // Utility functions

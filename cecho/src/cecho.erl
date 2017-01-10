@@ -34,7 +34,7 @@
 	 scrollok/2, mvaddch/3, mvaddstr/3, newwin/4, delwin/1, wmove/3,
 	 waddstr/2, waddch/2, mvwaddstr/4, mvwaddch/4, wrefresh/1, hline/2,
 	 whline/3, vline/2, wvline/3, border/8, wborder/9, box/3, getyx/1,
-	 getmaxyx/1, attron/2, attroff/2, keypad/2, getch/0, touchwin/1]).
+	 getmaxyx/1, attron/2, attroff/2, keypad/2, getch/0, touchwin/1, doupdate/0, wnoutrefresh/1]).
 
 %% =============================================================================
 %% Application API
@@ -42,16 +42,22 @@
 refresh() ->
     call(?REFRESH).
 
-cbreak() -> 
+doupdate() ->
+		    call(?DOUPDATE).
+
+wnoutrefresh(Window) when is_integer(Window) ->
+				    call(?WNOUTREFRESH, Window).
+
+cbreak() ->
     call(?CBREAK).
 
-nocbreak() -> 
+nocbreak() ->
     call(?NOCBREAK).
 
-echo() -> 
+echo() ->
     call(?ECHO).
 
-noecho() -> 
+noecho() ->
     call(?NOECHO).
 
 addch(Char) when is_integer(Char) ->
@@ -116,17 +122,17 @@ nonl() ->
 scrollok(Window, BFlag) when is_integer(Window) andalso is_boolean(BFlag) ->
     call(?SCROLLOK, {Window, BFlag}).
 
-mvaddch(Y, X, Char) when is_integer(Char) andalso is_integer(X) 
+mvaddch(Y, X, Char) when is_integer(Char) andalso is_integer(X)
 			 andalso is_integer(Y) ->
     call(?MVADDCH, {Y, X, Char}).
 
-mvaddstr(Y, X, String) when is_list(String) andalso is_integer(X) andalso 
+mvaddstr(Y, X, String) when is_list(String) andalso is_integer(X) andalso
 			    is_integer(Y) ->
     Str = lists:flatten(String),
     call(?MVADDSTR, {Y, X, erlang:iolist_size(Str), Str}).
 
-newwin(Height, Width, StartY, StartX) when is_integer(Height) andalso 
-					   is_integer(Width) andalso 
+newwin(Height, Width, StartY, StartX) when is_integer(Height) andalso
+					   is_integer(Width) andalso
 					   is_integer(StartY) andalso
 					   is_integer(StartX) ->
     call(?NEWWIN, {Height, Width, StartY, StartX}).
@@ -134,7 +140,7 @@ newwin(Height, Width, StartY, StartX) when is_integer(Height) andalso
 delwin(Window) when is_integer(Window) ->
     call(?DELWIN, Window).
 
-wmove(Window, Y, X) when is_integer(Window) andalso is_integer(Y) andalso 
+wmove(Window, Y, X) when is_integer(Window) andalso is_integer(Y) andalso
 			 is_integer(X) ->
     call(?WMOVE, {Window, Y, X}).
 
@@ -146,7 +152,7 @@ waddch(Window, Char) when is_integer(Window) andalso is_integer(Char) ->
     call(?WADDCH, {Window, Char}).
 
 mvwaddstr(Window, Y, X, String) when is_integer(Window) andalso is_integer(Y)
-				     andalso is_integer(X) andalso 
+				     andalso is_integer(X) andalso
 				     is_list(String) ->
     Str = lists:flatten(String),
     call(?MVWADDSTR, {Window, Y, X, erlang:iolist_size(Str), Str}).
@@ -173,10 +179,10 @@ wvline(Window, Char, MaxN) when is_integer(Window) andalso is_integer(MaxN) ->
 border(Ls, Rs, Ts, Bs, TLs, TRs, BLs, BRs) ->
     wborder(0, Ls, Rs, Ts, Bs, TLs, TRs, BLs, BRs).
 
-wborder(Window, Ls, Rs, Ts, Bs, TLs, TRs, BLs, BRs) 
-  when is_integer(Ls) andalso is_integer(Rs) andalso 
-       is_integer(Ts) andalso is_integer(Bs) andalso 
-       is_integer(TLs) andalso is_integer(TRs) andalso 
+wborder(Window, Ls, Rs, Ts, Bs, TLs, TRs, BLs, BRs)
+  when is_integer(Ls) andalso is_integer(Rs) andalso
+       is_integer(Ts) andalso is_integer(Bs) andalso
+       is_integer(TLs) andalso is_integer(TRs) andalso
        is_integer(BLs) andalso is_integer(BRs) ->
     call(?WBORDER, {Window, Ls, Rs, Ts, Bs, TLs, TRs, BLs, BRs}).
 

@@ -12,11 +12,10 @@ main() ->
     application:start(cecho),
     init(),
 
-    timer:sleep(200),        
-    cecho:refresh(),
+    timer:sleep(200),
     {Start,End,Open,Trap} = init_map(),
 
-    
+
     Panel_PID = spawn_link(?MODULE,panel_proces,[]),
     Move = spawn_link(?MODULE,ctrl,[self()]),
     MapPID = spawn_link(?MODULE,mapa,[Trap]),
@@ -25,7 +24,7 @@ main() ->
     loop(Panel_PID,Sonda_PID,DrawingPID),
 
     Panel_PID!{self(),koniec},
-    timer:sleep(200),        
+    timer:sleep(200),
 
     application:stop(cecho).
 
@@ -38,7 +37,7 @@ loop(PPID,SPID,DPID) ->
     receive
         {drawed} -> PPID!{self(),panel,NewPoint,End}
     end,
-    
+
 
     receive
         {koniec} -> ok;
@@ -61,12 +60,12 @@ restartSIM(SPID) ->
 
 sprawdzanieCelu(Key,End,PPID,SPID,DPID) ->
     timer:sleep(200),
-    if  
+    if
         (Key == End) -> atDestination(PPID,SPID,DPID);
         true -> loop(PPID,SPID,DPID)
     end.
 
-atDestination(PPID,SPID,DPID) -> 
+atDestination(PPID,SPID,DPID) ->
     receive
         {koniec} -> ok;
         {restart} -> restartSIM(SPID),
@@ -110,7 +109,7 @@ napis(Y,X) ->
 
 
 sonda(Open,Close,Key,End,PID,MapPID)->
-    receive 
+    receive
         {koniec} -> ok;
         {PID,restartEnd} -> NewEnd = setNewEnd(MapPID,Key),
                 PID!{restarted},
@@ -119,7 +118,7 @@ sonda(Open,Close,Key,End,PID,MapPID)->
                 MapPID!{restart,RTrap},
                 PID!{restarted},
                 sonda(ROpen,[],RStart,REnd,PID,MapPID);
-        {PID,next} -> Traps = get_trapsInRange(MapPID,Key), 
+        {PID,next} -> Traps = get_trapsInRange(MapPID,Key),
             {OpenNew,CloseNew,Y,X} = next_point(Open,Close,Traps,Key,End),
             PID!{point,{Y,X},End},
             sonda(OpenNew,CloseNew,{Y,X},End,PID,MapPID)
@@ -173,10 +172,10 @@ update(Open,_,_,_,[]) -> Open;
 update(Open,Key,{CG,CH,CF},End,[Head|T]) ->
     G = distance(Key,Head)+CG,
     H = distance(End,Head),
-    F = H+G, 
+    F = H+G,
     Check = maps:is_key(Head,Open),
-    if 
-        Check == true -> Value1 = check_value(Head,{G,H,F},Open), 
+    if
+        Check == true -> Value1 = check_value(Head,{G,H,F},Open),
         update(maps:update(Head,Value1,Open),Key,{CG,CH,CF},End,T);
         true -> update(maps:put(Head,{G,H,F},Open),Key,{CG,CH,CF},End,T)
 
@@ -184,10 +183,10 @@ update(Open,Key,{CG,CH,CF},End,[Head|T]) ->
 
 
 
-% Sprawdzenie czy wartość jest bliżej 
+% Sprawdzenie czy wartość jest bliżej
 check_value(Key,{G,H,F},Map) ->
     Check = compare_value({G,H,F},maps:get(Key,Map)),
-    if 
+    if
         Check == true -> {G,H,F};
         true -> maps:get(Key,Map)
     end.
@@ -229,12 +228,12 @@ mapa(Traps) ->
     end.
 
 % przeszkody w zasięgu
-traps_in_range(Y,X,Trap,Range) -> 
+traps_in_range(Y,X,Trap,Range) ->
     List = [{Y1,X1} || Y1 <- lists:seq(Y-Range,Y+Range),
      X1 <- lists:seq(X-Range,X+Range)],
 
     [ {A,B} || {A,B} <- Trap, {Y2,X2} <-List,
-        A == Y2 , B == X2 
+        A == Y2 , B == X2
     ].
 
 %-----------------------------------------------------
@@ -243,7 +242,7 @@ offset(Y,X) ->
     {MaxY,MaxX} = cecho:getmaxyx(),
     Y2 = MaxY div 2,
     X2 = MaxX div 2,
-    if 
+    if
         (Y < Y2) and (X < X2) -> {0,0};
         (Y < Y2) and (X>=(?sizeX-X2)) -> {0,?sizeX-MaxX};
         (Y>=(?sizeY-Y2)) and (X < X2) -> {?sizeY-MaxY,0};
@@ -252,7 +251,7 @@ offset(Y,X) ->
         (Y >= Y2) and (Y <(?sizeY-Y2)) and (X < X2) -> {Y-Y2,0};
         (Y >= Y2) and (Y <(?sizeY-Y2)) and (X >=(?sizeX-X2)) -> {Y-Y2,?sizeX-MaxX};
         (Y >=(?sizeY-Y2)) and (X >=X2) and (X <(?sizeX-X2)) -> {?sizeY-MaxY,X-X2};
-                                
+
         true -> {Y-Y2,X-X2}
     end.
 
@@ -274,7 +273,7 @@ gen_Point(Traps) ->
     end.
 
 
-generate_plansza(MaxY,MaxX,N,End) -> 
+generate_plansza(MaxY,MaxX,N,End) ->
     {A, B, C} = erlang:timestamp(),
     random:seed(A, B, C),
 	generate_plansza(MaxY,MaxX,N,[],End).
@@ -308,28 +307,26 @@ get_traps(MPID) ->
 
 
 rysuj({Y,X},Trap,End)->
+    cecho:erase(),
     {MaxY,MaxX} = cecho:getmaxyx(),
     {CY,CX} = offset(Y,X),
     draw_map(map_coord(MaxY,MaxX),8,0,0),
     draw_map(Trap,1,CY,CX),
-    cecho:refresh(),
     draw_End(End,CY,CX),
     draw_sonda(Y,X,CY,CX).
 
 draw_sonda(Y,X,OffsetY,OffsetX) ->
     cecho:attron(?ceCOLOR_PAIR(2)),
     cecho:move(Y-OffsetY,X-OffsetX),
-    cecho:addch($ ),
-    cecho:refresh().
+    cecho:addch($ ).
     %timer:sleep(200).
 
 draw_End({Y,X},OffsetY,OffsetX) ->
     cecho:attron(?ceCOLOR_PAIR(3)),
     {MaxY,MaxX} = cecho:getmaxyx(),
-    if     ((Y-OffsetY>=0) and (Y-OffsetY<MaxY) and (X-OffsetX>=0) and (X-OffsetX<MaxX)) -> 
+    if     ((Y-OffsetY>=0) and (Y-OffsetY<MaxY) and (X-OffsetX>=0) and (X-OffsetX<MaxX)) ->
                 cecho:move(Y-OffsetY,X-OffsetX),
-                cecho:addch($ ),
-                cecho:refresh();
+                cecho:addch($ );
             true -> ok
     end.
 
@@ -349,7 +346,7 @@ draw(Y,X) ->
 panel_proces()->
     receive
         {Od,panel,Key,End} -> panel(Key,End),
-            Od!{self(),start}, 
+            Od!{self(),start},
             panel_proces();
         {_,koniec} -> ok
     end.
@@ -366,7 +363,8 @@ panel({Y,X},{EY,EX}) ->
     cecho:addstr(io_lib:format(" Y: ~p  X: ~p",[Y,X])),
     cecho:move(2,1),
     cecho:addstr(io_lib:format("EY: ~p EX: ~p",[EY,EX])),
-    cecho:refresh(),
+    cecho:wnoutrefresh(?ceSTDSCR),
+    cecho:doupdate(),
     timer:sleep(300).
 
 % --------------INPUT-----------------------------------------------------------------------------------
@@ -375,7 +373,7 @@ panel({Y,X},{EY,EX}) ->
 ctrl(Mover) ->
     C = cecho:getch(),
     case C of
-	$q -> 
+	$q ->
 	    Mover!{koniec};
     $p ->
         Mover!{pauza},
