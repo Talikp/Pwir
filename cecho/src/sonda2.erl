@@ -224,7 +224,7 @@ mapa(Traps) ->
             mapa(Traps);
         {Ster,traps} -> Ster!{Traps},
             mapa(Traps);
-        {restart,NewTrap} -> mapa(newTrap);
+        {restart,NewTrap} -> mapa(NewTrap);
         {koniec} -> ok
     end.
 
