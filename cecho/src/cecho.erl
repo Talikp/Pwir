@@ -34,13 +34,17 @@
 	 scrollok/2, mvaddch/3, mvaddstr/3, newwin/4, delwin/1, wmove/3,
 	 waddstr/2, waddch/2, mvwaddstr/4, mvwaddch/4, wrefresh/1, hline/2,
 	 whline/3, vline/2, wvline/3, border/8, wborder/9, box/3, getyx/1,
-	 getmaxyx/1, attron/2, attroff/2, keypad/2, getch/0, touchwin/1, doupdate/0, wnoutrefresh/1]).
+	 getmaxyx/1, attron/2, attroff/2, keypad/2, getch/0, touchwin/1, doupdate/0, wnoutrefresh/1,
+	 wbkgd/2]).
 
 %% =============================================================================
 %% Application API
 %% =============================================================================
 refresh() ->
     call(?REFRESH).
+
+wbkgd(Window, Color) when is_integer(Window) andalso is_integer(Color) ->
+		    call(?WBKGD, {Window, Color}).
 
 doupdate() ->
 		    call(?DOUPDATE).

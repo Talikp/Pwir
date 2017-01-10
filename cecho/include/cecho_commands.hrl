@@ -54,3 +54,4 @@
 -define(TOUCHWIN, 37).
 -define(DOUPDATE, 38).
 -define(WNOUTREFRESH, 39).
+-define(WBKGD, 40).

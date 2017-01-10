@@ -311,6 +311,7 @@ rysuj({Y,X},Trap,End)->
     {MaxY,MaxX} = cecho:getmaxyx(),
     {CY,CX} = offset(Y,X),
     draw_map(map_coord(MaxY,MaxX),8,0,0),
+    %cecho:wbkg(?ceSTDSCR,?ceCOLOR_PAIR()),
     draw_map(Trap,1,CY,CX),
     draw_End(End,CY,CX),
     draw_sonda(Y,X,CY,CX).
